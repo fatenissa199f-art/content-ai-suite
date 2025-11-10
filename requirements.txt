@@ -9,3 +9,4 @@ docx2txt
 pypdf
 groq
 langchain-groq
+sentence-transformers
