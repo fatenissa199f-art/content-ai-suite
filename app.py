@@ -217,30 +217,25 @@ for q, a in st.session_state["rag_history"]:
 query = st.text_input("Ask your question:")
 
 if query:
+query = st.text_input("Ask your question:")
+
+if query:
 
     with st.spinner("Thinking..."):
 
         hits = vectorstore.similarity_search_with_score(query, k=3)
 
-            with st.spinner("Thinking..."):
-
-        hits = vectorstore.similarity_search_with_score(query, k=3)
-
-        # Build retriever
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-        # Function to build context correctly
         def build_context(inputs):
-            q = inputs["question"]                 # Extract question text
+            q = inputs["question"]
             docs = retriever.get_relevant_documents(q)
             return "\n\n".join(d.page_content[:1500] for d in docs)
 
-        # Prompt template
         prompt = PromptTemplate.from_template(
             "Use ONLY this context to answer:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
         )
 
-        # ✅ FIXED CHAIN — fully compatible with FAISS & Groq
         chain = (
             {
                 "context": build_context,
@@ -251,16 +246,13 @@ if query:
             | StrOutputParser()
         )
 
-        # ✅ This now works because retriever receives only a string
         answer = chain.invoke({"question": query})
-
 
     st.session_state["rag_history"].append((query, answer))
 
     st.markdown(f"<div class='bubble user'>{query}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='bubble ai'>{answer}</div>", unsafe_allow_html=True)
 
-    # Evidence Viewer
     if hits:
         st.markdown("### 📎 Evidence")
         for i, (doc, score) in enumerate(hits, 1):
