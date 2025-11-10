@@ -42,7 +42,7 @@ DATA_DIR = "data"
 VECTOR_DB = "data/faiss_store"
 
 # Embeddings model
-emb_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+emb_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # Load vector DB
 if os.path.exists(VECTOR_DB):
