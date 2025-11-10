@@ -105,20 +105,17 @@ from langchain_core.output_parsers import StrOutputParser
 DATA_DIR = "data"
 INDEX_DIR = os.path.join(DATA_DIR, "faiss_store")
 
-
 # ✅ Embeddings
 @st.cache_resource
 def get_embeddings():
     return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-
-# ✅ Working Groq LLM (correct syntax)
+# ✅ Working Groq LLM
 def get_local_llm():
     return ChatGroq(
         model="mixtral-8x7b",
         temperature=0.1
     )
-
 
 # ====== LOAD DOCUMENTS ======
 def load_document(path):
@@ -135,7 +132,6 @@ def load_document(path):
         print("Skipping bad file:", path)
     return []
 
-
 def load_default_docs():
     docs = []
     if not os.path.isdir(DATA_DIR): return docs
@@ -146,15 +142,12 @@ def load_default_docs():
             docs.extend(load_document(p))
     return docs
 
-
 def faiss_exists():
     return os.path.isdir(INDEX_DIR)
-
 
 def save_faiss(store):
     os.makedirs(DATA_DIR, exist_ok=True)
     store.save_local(INDEX_DIR)
-
 
 def load_faiss():
     return FAISS.load_local(
@@ -163,14 +156,12 @@ def load_faiss():
         allow_dangerous_deserialization=True
     )
 
-
 @st.cache_resource
 def build_vectorstore(docs):
     splitter = RecursiveCharacterTextSplitter(chunk_size=250, chunk_overlap=50)
     chunks = splitter.split_documents(docs)
     texts = [c.page_content for c in chunks]
     return FAISS.from_texts(texts, get_embeddings())
-
 
 # ===== BUTTONS =====
 c1, c2 = st.columns([1, 1])
@@ -203,7 +194,6 @@ else:
 
     st.success("✅ Index created")
 
-
 # ===== CHAT HISTORY =====
 if "rag_history" not in st.session_state:
     st.session_state["rag_history"] = []
@@ -212,11 +202,7 @@ for q, a in st.session_state["rag_history"]:
     st.markdown(f"<div class='bubble user'>{q}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='bubble ai'>{a}</div>", unsafe_allow_html=True)
 
-
 # ===== ASK A QUESTION =====
-query = st.text_input("Ask your question:")
-
-if query:
 query = st.text_input("Ask your question:")
 
 if query:
