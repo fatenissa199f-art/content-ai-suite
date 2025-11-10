@@ -98,7 +98,7 @@ from langchain_community.document_loaders import (
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 
 # ====== CONFIG ======
@@ -209,26 +209,35 @@ if query:
 
     with st.spinner("Thinking..."):
 
-        hits = vectorstore.similarity_search_with_score(query, k=3)
+        # Evidence preview
+        hits = vectorstore.similarity_search_with_score(str(query), k=3)
 
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        # ✅ Stable retriever
+        rag_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-        # ✅ Force extractor → retriever gets ONLY the string, not dict
+        # ✅ Stage 1 — Extract only the text from dict input
         extract_question = RunnableLambda(lambda x: x["question"])
 
-        # ✅ After retrieval → format context text
-        format_docs = RunnableLambda(
+        # ✅ Stage 2 — Pass the string to retriever
+        retrieve_docs = extract_question | rag_retriever
+
+        # ✅ Stage 3 — Process retrieved docs
+        prepare_context = RunnableLambda(
             lambda docs: "\n\n".join(d.page_content[:1500] for d in docs)
         )
 
+        # ✅ Combine retrieval pipeline
+        context_pipeline = retrieve_docs | prepare_context
+
+        # ✅ Prompt
         prompt = PromptTemplate.from_template(
             "Use ONLY this context to answer:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
         )
 
-        # ✅ FINAL WORKING CHAIN — guaranteed fix
+        # ✅ FINAL CHAIN
         chain = (
             {
-                "context": extract_question | retriever | format_docs,
+                "context": context_pipeline,
                 "question": RunnablePassthrough(),
             }
             | prompt
@@ -238,10 +247,12 @@ if query:
 
         answer = chain.invoke({"question": query})
 
+    # ✅ UI — chat history
     st.session_state.setdefault("rag_history", []).append((query, answer))
     st.markdown(f"<div class='bubble user'>{query}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='bubble ai'>{answer}</div>", unsafe_allow_html=True)
 
+    # ✅ Evidence output
     if hits:
         st.markdown("### 📎 Evidence")
         for i, (doc, score) in enumerate(hits, 1):
