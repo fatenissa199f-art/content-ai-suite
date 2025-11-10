@@ -222,15 +222,28 @@ if query:
 
         hits = vectorstore.similarity_search_with_score(query, k=3)
 
+            with st.spinner("Thinking..."):
+
+        hits = vectorstore.similarity_search_with_score(query, k=3)
+
+        # Build retriever
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+        # Function to build context correctly
+        def build_context(inputs):
+            q = inputs["question"]                 # Extract question text
+            docs = retriever.get_relevant_documents(q)
+            return "\n\n".join(d.page_content[:1500] for d in docs)
+
+        # Prompt template
         prompt = PromptTemplate.from_template(
             "Use ONLY this context to answer:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
         )
 
+        # ✅ FIXED CHAIN — fully compatible with FAISS & Groq
         chain = (
             {
-                "context": vectorstore.as_retriever(search_kwargs={"k": 3})
-                | (lambda docs: "\n\n".join(
-                    d.page_content[:1500] for d in docs)),
+                "context": build_context,
                 "question": RunnablePassthrough(),
             }
             | prompt
@@ -238,8 +251,9 @@ if query:
             | StrOutputParser()
         )
 
-        # ✅ IMPORTANT FIX (Groq 400 error solved here)
+        # ✅ This now works because retriever receives only a string
         answer = chain.invoke({"question": query})
+
 
     st.session_state["rag_history"].append((query, answer))
 
