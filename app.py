@@ -21,7 +21,6 @@ st.set_page_config(page_title="Dubizzle Group AI Content Lab", layout="wide")
 # ==============================================
 st.markdown("""
 <style>
-/* Layout cleanup */
 [data-testid="stVerticalBlock"] > div {
   background: transparent !important;
   box-shadow: none !important;
@@ -35,7 +34,6 @@ main .block-container { padding-top: 0rem !important; }
 .header-sub { font-size: 15px; color: #4b5563; margin-bottom: 20px !important; }
 section[data-testid="stSidebar"] { background: #fafafa !important; border-right: 1px solid #ddd !important; }
 
-/* ChatGPT-style bubbles */
 .bubble { 
   padding: 12px 16px; 
   border-radius: 14px; 
@@ -59,7 +57,6 @@ section[data-testid="stSidebar"] { background: #fafafa !important; border-right:
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-/* Evidence box */
 .evidence { 
   background:#fafafa; 
   border:1px solid #e5e7eb; 
@@ -84,7 +81,6 @@ st.markdown('<div class="header-title"><span class="red">Dubizzle Group</span> A
 st.markdown('<div class="header-sub">Internal AI-powered content platform for Bayut & Dubizzle teams</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-
 # ==============================================
 # SIDEBAR TOOL SELECTOR
 # ==============================================
@@ -102,9 +98,7 @@ tool = st.sidebar.selectbox(
     ],
 )
 
-# ==============================================
-# PLACEHOLDER TOOLS
-# ==============================================
+# Placeholder Tools
 if tool == "LPV Rewriter":
     st.subheader("LPV Rewriter")
     st.write("🚧 Coming soon")
@@ -141,7 +135,6 @@ elif tool == "Internal RAG":
     st.subheader("Internal Knowledge Base (Local RAG)")
     st.caption("FAST RAG • Uses documents from /data • Delete /data/faiss_store to rebuild")
 
-    # LangChain deps
     from langchain_community.vectorstores import FAISS
     from langchain_community.embeddings import OllamaEmbeddings
     from langchain_groq import ChatGroq
@@ -164,13 +157,14 @@ elif tool == "Internal RAG":
     def get_embeddings():
         return OllamaEmbeddings(model=EMBED_MODEL)
 
-   def get_local_llm():
-    return ChatGroq(
-        model="llama3-8b-8192",
-        temperature=0.1
-    )
+    # ✅ FIXED FUNCTION (previously broken)
+    def get_local_llm():
+        return ChatGroq(
+            model="llama3-8b-8192",
+            temperature=0.1
+        )
 
-    # Load files
+    # Load documents
     def load_document(path):
         ext = os.path.splitext(path)[1].lower()
         try:
@@ -195,7 +189,8 @@ elif tool == "Internal RAG":
                 docs.extend(load_document(p))
         return docs
 
-    def faiss_exists(): return os.path.isdir(INDEX_DIR)
+    def faiss_exists(): 
+        return os.path.isdir(INDEX_DIR)
 
     def save_faiss(store):
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -276,7 +271,8 @@ elif tool == "Internal RAG":
             chain = (
                 {
                     "context": vectorstore.as_retriever(search_kwargs={"k": 3})
-                    | (lambda docs: "\n\n".join(d.page_content[:1500] for d in docs)),
+                    | (lambda docs: "\n\n".join(
+                        d.page_content[:1500] for d in docs)),
                     "question": RunnablePassthrough(),
                 }
                 | prompt
@@ -291,7 +287,6 @@ elif tool == "Internal RAG":
         st.markdown(f"<div class='bubble user'>{query}</div>", unsafe_allow_html=True)
         st.markdown(f"<div class='bubble ai'>{answer}</div>", unsafe_allow_html=True)
 
-        # Evidence
         if hits:
             st.markdown("### 📎 Evidence")
             for i, (doc, score) in enumerate(hits, 1):
