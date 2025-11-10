@@ -91,7 +91,7 @@ st.caption("FAST RAG • Uses documents from /data • Delete /data/faiss_store 
 
 # ✅ Correct imports (NO GroqEmbeddings!)
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_community.document_loaders import (
     PyPDFLoader, Docx2txtLoader, TextLoader, CSVLoader
@@ -109,8 +109,9 @@ EMBED_MODEL = "nomic-embed-text"
 
 # ✅ Embeddings
 @st.cache_resource
+@st.cache_resource
 def get_embeddings():
-    return OllamaEmbeddings(model=EMBED_MODEL)
+    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 
 # ✅ Working Groq LLM
