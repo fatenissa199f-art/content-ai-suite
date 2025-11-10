@@ -128,16 +128,16 @@ elif tool == "Sheet Analyzer":
     st.write("🚧 Coming soon")
 
 # =====================================================================
-# ✅✅✅ INTERNAL RAG (FASTEST, CLEANEST, CHATGPT-STYLE CHAT)
+# ✅✅✅ INTERNAL RAG — FIXED FOR STREAMLIT CLOUD
 # =====================================================================
 elif tool == "Internal RAG":
 
     st.subheader("Internal Knowledge Base (Local RAG)")
     st.caption("FAST RAG • Uses documents from /data • Delete /data/faiss_store to rebuild")
 
+    # ✅ Correct imports (Groq embeddings + Groq LLM + FAISS)
     from langchain_community.vectorstores import FAISS
-    from langchain_community.embeddings import OllamaEmbeddings
-    from langchain_groq import ChatGroq
+    from langchain_groq import ChatGroq, GroqEmbeddings
     from langchain_community.document_loaders import (
         PyPDFLoader, Docx2txtLoader, TextLoader, CSVLoader
     )
@@ -149,22 +149,22 @@ elif tool == "Internal RAG":
     # Config
     DATA_DIR = "data"
     INDEX_DIR = os.path.join(DATA_DIR, "faiss_store")
-    EMBED_MODEL = "nomic-embed-text"
-    LLM_MODEL = "qwen2.5:0.5b"
 
-    # Embeddings
+    # ✅ Embeddings (Groq)
     @st.cache_resource
     def get_embeddings():
-        return OllamaEmbeddings(model=EMBED_MODEL)
+        return GroqEmbeddings(model="nomic-embed-text")
 
-    # ✅ FIXED FUNCTION (previously broken)
+    # ✅ LLM
     def get_local_llm():
         return ChatGroq(
             model="llama3-8b-8192",
             temperature=0.1
         )
 
+    # ------------------------------
     # Load documents
+    # ------------------------------
     def load_document(path):
         ext = os.path.splitext(path)[1].lower()
         try:
@@ -189,7 +189,8 @@ elif tool == "Internal RAG":
                 docs.extend(load_document(p))
         return docs
 
-    def faiss_exists(): 
+    # FAISS helpers
+    def faiss_exists():
         return os.path.isdir(INDEX_DIR)
 
     def save_faiss(store):
@@ -209,7 +210,7 @@ elif tool == "Internal RAG":
         return FAISS.from_texts(texts, get_embeddings())
 
     # ------------------------------
-    # BUTTONS
+    # Buttons
     # ------------------------------
     c1, c2 = st.columns([1, 1])
 
@@ -225,7 +226,7 @@ elif tool == "Internal RAG":
         st.rerun()
 
     # ------------------------------
-    # LOAD OR BUILD INDEX
+    # Load or Build Index
     # ------------------------------
     if faiss_exists():
         with st.spinner("Loading FAISS index..."):
@@ -244,7 +245,7 @@ elif tool == "Internal RAG":
         st.success("✅ Index created")
 
     # ------------------------------
-    # CHAT HISTORY
+    # Chat History
     # ------------------------------
     if "rag_history" not in st.session_state:
         st.session_state["rag_history"] = []
@@ -254,14 +255,13 @@ elif tool == "Internal RAG":
         st.markdown(f"<div class='bubble ai'>{a}</div>", unsafe_allow_html=True)
 
     # ------------------------------
-    # ASK A QUESTION
+    # Ask Question
     # ------------------------------
     query = st.text_input("Ask your question:")
 
     if query:
 
         with st.spinner("Thinking..."):
-
             hits = vectorstore.similarity_search_with_score(query, k=3)
 
             prompt = PromptTemplate.from_template(
@@ -271,8 +271,7 @@ elif tool == "Internal RAG":
             chain = (
                 {
                     "context": vectorstore.as_retriever(search_kwargs={"k": 3})
-                    | (lambda docs: "\n\n".join(
-                        d.page_content[:1500] for d in docs)),
+                    | (lambda docs: "\n\n".join(d.page_content[:1500] for d in docs)),
                     "question": RunnablePassthrough(),
                 }
                 | prompt
