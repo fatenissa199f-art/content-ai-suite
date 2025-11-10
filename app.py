@@ -209,27 +209,20 @@ if query:
 
     with st.spinner("Thinking..."):
 
-        # Optional: quick top-k view for evidence panel
         hits = vectorstore.similarity_search_with_score(query, k=3)
 
-        # ✅ Use a SAFE name to avoid collisions with LangChain internals
-        rag_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        # ✅ Retriever (no direct calling in Python anymore)
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-        # ✅ Build context from retriever using ONLY the question string
-        def build_context(inputs):
-            q = inputs["question"]
-            docs = rag_retriever.get_relevant_documents(q)
-            return "\n\n".join(d.page_content[:1500] for d in docs)
-
-        # Prompt
+        # ✅ Prompt
         prompt = PromptTemplate.from_template(
             "Use ONLY this context to answer:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
         )
 
-        # ✅ Clean, working chain
+        # ✅ FINAL WORKING CHAIN (no functions, no direct retriever calls)
         chain = (
             {
-                "context": build_context,
+                "context": retriever | (lambda docs: "\n\n".join(d.page_content[:1500] for d in docs)),
                 "question": RunnablePassthrough(),
             }
             | prompt
@@ -237,15 +230,14 @@ if query:
             | StrOutputParser()
         )
 
-        # ✅ Pass dict with "question" key (retriever receives string via build_context)
+        # ✅ Now safe: retriever receives ONLY the question string
         answer = chain.invoke({"question": query})
 
-    # Chat history UI
+    # UI
     st.session_state.setdefault("rag_history", []).append((query, answer))
     st.markdown(f"<div class='bubble user'>{query}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='bubble ai'>{answer}</div>", unsafe_allow_html=True)
 
-    # Evidence panel
     if hits:
         st.markdown("### 📎 Evidence")
         for i, (doc, score) in enumerate(hits, 1):
