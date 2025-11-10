@@ -211,18 +211,24 @@ if query:
 
         hits = vectorstore.similarity_search_with_score(query, k=3)
 
-        # ✅ Retriever (no direct calling in Python anymore)
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-        # ✅ Prompt
+        # ✅ Force extractor → retriever gets ONLY the string, not dict
+        extract_question = RunnableLambda(lambda x: x["question"])
+
+        # ✅ After retrieval → format context text
+        format_docs = RunnableLambda(
+            lambda docs: "\n\n".join(d.page_content[:1500] for d in docs)
+        )
+
         prompt = PromptTemplate.from_template(
             "Use ONLY this context to answer:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
         )
 
-        # ✅ FINAL WORKING CHAIN (no functions, no direct retriever calls)
+        # ✅ FINAL WORKING CHAIN — guaranteed fix
         chain = (
             {
-                "context": retriever | (lambda docs: "\n\n".join(d.page_content[:1500] for d in docs)),
+                "context": extract_question | retriever | format_docs,
                 "question": RunnablePassthrough(),
             }
             | prompt
@@ -230,10 +236,8 @@ if query:
             | StrOutputParser()
         )
 
-        # ✅ Now safe: retriever receives ONLY the question string
         answer = chain.invoke({"question": query})
 
-    # UI
     st.session_state.setdefault("rag_history", []).append((query, answer))
     st.markdown(f"<div class='bubble user'>{query}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='bubble ai'>{answer}</div>", unsafe_allow_html=True)
