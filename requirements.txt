@@ -7,4 +7,5 @@ langchain-text-splitters
 faiss-cpu
 docx2txt
 pypdf
-langchain_groq
+groq
+langchain-groq
