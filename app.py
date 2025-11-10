@@ -113,7 +113,7 @@ def get_embeddings():
 # ✅ Working Groq LLM
 def get_local_llm():
     return ChatGroq(
-        model="mixtral-8x7b",
+        model="llama-3.1-8b-instant",
         temperature=0.1
     )
 
@@ -209,19 +209,24 @@ if query:
 
     with st.spinner("Thinking..."):
 
+        # Optional: quick top-k view for evidence panel
         hits = vectorstore.similarity_search_with_score(query, k=3)
 
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        # ✅ Use a SAFE name to avoid collisions with LangChain internals
+        rag_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
+        # ✅ Build context from retriever using ONLY the question string
         def build_context(inputs):
             q = inputs["question"]
-            docs = retriever.get_relevant_documents(q)
+            docs = rag_retriever.get_relevant_documents(q)
             return "\n\n".join(d.page_content[:1500] for d in docs)
 
+        # Prompt
         prompt = PromptTemplate.from_template(
             "Use ONLY this context to answer:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
         )
 
+        # ✅ Clean, working chain
         chain = (
             {
                 "context": build_context,
@@ -232,13 +237,15 @@ if query:
             | StrOutputParser()
         )
 
+        # ✅ Pass dict with "question" key (retriever receives string via build_context)
         answer = chain.invoke({"question": query})
 
-    st.session_state["rag_history"].append((query, answer))
-
+    # Chat history UI
+    st.session_state.setdefault("rag_history", []).append((query, answer))
     st.markdown(f"<div class='bubble user'>{query}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='bubble ai'>{answer}</div>", unsafe_allow_html=True)
 
+    # Evidence panel
     if hits:
         st.markdown("### 📎 Evidence")
         for i, (doc, score) in enumerate(hits, 1):
